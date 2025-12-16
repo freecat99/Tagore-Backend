@@ -73,7 +73,7 @@ export const loginValidate = (req, res, next) => {
 
 }
 
-export const protectRoute = (req, res, next) => {
+export const protectRoute = async(req, res, next) => {
     try {
 
         const token = req.cookies.jwt;
@@ -85,8 +85,8 @@ export const protectRoute = (req, res, next) => {
         if(!decoded){
             return res.status(403).json({message:"Unauthorized access!"})
         }
-        //const user = User.findOne({decoded.email})
-            
+        const user = await User.findById(decoded.userId);
+        req.user = user;
         next();
 
     } catch (error) {
