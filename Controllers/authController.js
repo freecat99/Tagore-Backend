@@ -79,17 +79,30 @@ export const updateProfile = async(req, res) => {
     
     try {
 
-        const {profilePic} = req.body;
+        let {profilePic, headline, bio, institution, location, website, socials} = req.body;
+        let profilePicUrl = "";
         const userId = req.user.id;
         
-        if(!profilePic){
-            return res.status(400).json({message:"Image required!"})
+        if(!profilePic && !headline &&!bio && !institution && !location && !website && !socials){
+            return res.status(200).json({message:"Nothing changed!", user:req.user});
         }
+        
+        if(profilePic){
+            const uploadResponse = await cloudinary.uploader.upload(profilePic);
+            profilePicUrl = uploadResponse.secure_url;
+        }
+        const updatedUser = await User.findByIdAndUpdate(userId, {
+            headline: headline,
+            bio: bio,
+            institution: institution,
+            location: location,
+            website: website,
+            socials: socials,
+            profilePic:profilePicUrl
+        }, {new:true});
+        
 
-        const uploadResponse = await cloudinary.uploader.upload(profilePic);
-        const updatedUser = await User.findByIdAndUpdate(userId, {profilePic:uploadResponse.secure_url}, {new:true});
-
-        res.status(200).json({message:"Profile picture changed!"}, updatedUser);
+        res.status(200).json({message:"Changes saved!", updatedUser});
 
     } catch (error) {
         console.log("Error in updateProfile controller", error);

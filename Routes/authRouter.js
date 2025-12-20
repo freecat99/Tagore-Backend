@@ -4,7 +4,7 @@ import { loginValidate, protectRoute, registerValidate } from '../Middlewares/au
 
 const authRouter = express.Router();
 
-authRouter.post('/logout', logout); //url = localhost:1601/api/auth/logout
+authRouter.post('/logout', logout); 
 authRouter.post('/login', loginValidate,login);
 authRouter.post('/register', registerValidate, register);
 

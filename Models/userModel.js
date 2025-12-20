@@ -23,6 +23,31 @@ const userSchema = new mongoose.Schema(
         profilePic:{
             type:String,
             default:"",
+        },
+        headline:{
+            type:String,
+            default:""
+        },
+        bio:{
+            type:String,
+            default:""
+        },
+        institution:{
+            type:String,
+            default:""
+        },
+        location:{
+            type:String,
+            default:""
+        },
+        website:{
+            type:String,
+            default:""
+        },
+        socials:{
+            type:Map,
+            of:String,
+            default:""
         }
     },
     {timestamps:true}
