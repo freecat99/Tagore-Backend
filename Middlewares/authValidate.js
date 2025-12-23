@@ -35,11 +35,11 @@ export const registerValidate = (req, res, next) => {
         if(isValid.error){
             return res.json(isValid.error.details[0].message)
         }
+        next();
     } catch (error) {
         console.log(`Error in registerValidate middleware`)
         res.json({error});
     }
-    next();
 
 }
 
@@ -63,13 +63,14 @@ export const loginValidate = (req, res, next) => {
     try {
         const isValid = schema.validate({email, password});
         if(isValid.error){
-            return res.json(isValid.error.details[0].message)
+            console.log(isValid.error)
+            return res.status(400).json({message:isValid.error.details[0].message, success:false})
         }
+        next();
     } catch (error) {
-        console.log(`Error in loginValidate middleware`)
+        console.log(`Error in loginValidate middleware`, error)
         res.json({error});
     }
-    next();
 
 }
 
