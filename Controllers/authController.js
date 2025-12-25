@@ -113,7 +113,8 @@ export const updateProfile = async(req, res) => {
 
 export const checkAuth = (req, res) => {
     try {
-
+        const cookie = getCookies();
+/* get cookies here and make the login stay for 7d, with the help of cookie authentication */
         return res.status(200).json(req.user);
 
     } catch (error) {

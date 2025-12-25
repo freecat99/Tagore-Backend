@@ -3,7 +3,8 @@ export const search= async(req, res)=>{
         const {parameter} = req.body;
 
         const url = 'https://doaj.org/api/search/articles/';
-        const request = url+parameter;
+        const request = url + encodeURIComponent(parameter);
+        
         const response = await fetch(request);
         const result = await response.json();
 
