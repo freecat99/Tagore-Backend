@@ -3,6 +3,6 @@ import { search } from '../Controllers/articleController.js';
 
 const articleRouter = express.Router();
 
-articleRouter.get('/search', search)
+articleRouter.post('/search', search)
 
 export default articleRouter;
