@@ -47,7 +47,7 @@ const userSchema = new mongoose.Schema(
         socials:{
             type:Map,
             of:String,
-            default:""
+            default:{}
         }
     },
     {timestamps:true}

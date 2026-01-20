@@ -75,41 +75,42 @@ export const logout = (req, res) => {
     }
 }
 
-export const updateProfile = async(req, res) => {
-    
-    try {
+export const updateProfile = async (req, res) => {
+  try {
+    let { profilePic, headline, bio, institution, location, website, socials } =
+      req.body;
 
-        let {profilePic, headline, bio, institution, location, website, socials} = req.body;
-        let profilePicUrl = "";
-        const userId = req.user.id;
-        
-        if(!profilePic && !headline &&!bio && !institution && !location && !website && !socials){
-            return res.status(200).json({message:"Nothing changed!", user:req.user});
-        }
-        
-        if(profilePic){
-            const uploadResponse = await cloudinary.uploader.upload(profilePic);
-            profilePicUrl = uploadResponse.secure_url;
-        }
-        const updatedUser = await User.findByIdAndUpdate(userId, {
-            headline: headline,
-            bio: bio,
-            institution: institution,
-            location: location,
-            website: website,
-            socials: socials,
-            profilePic:profilePicUrl
-        }, {new:true});
-        
+    const userId = req.user.id;
 
-        res.status(200).json({message:"Changes saved!", updatedUser});
+    const updateData = {};
 
-    } catch (error) {
-        console.log("Error in updateProfile controller", error);
-        res.status(500).json({message:"Internal server error!"});
+    if (headline !== undefined) updateData.headline = headline;
+    if (bio !== undefined) updateData.bio = bio;
+    if (institution !== undefined) updateData.institution = institution;
+    if (location !== undefined) updateData.location = location;
+    if (website !== undefined) updateData.website = website;
+    if (socials !== undefined) updateData.socials = socials;
+
+    if (profilePic) {
+      const uploadResponse = await cloudinary.uploader.upload(profilePic);
+      updateData.profilePic = uploadResponse.secure_url;
     }
 
-}
+    if (Object.keys(updateData).length === 0) {
+      return res.status(200).json({ message: "Nothing changed!", user: req.user });
+    }
+
+    const updatedUser = await User.findByIdAndUpdate(userId, updateData, {
+      new: true,
+    });
+
+    res.status(200).json({ message: "Changes saved!", updatedUser });
+  } catch (error) {
+    console.log("Error in updateProfile controller", error);
+    res.status(500).json({ message: "Internal server error!" });
+  }
+};
+
 
 export const checkAuth = (req, res) => {
     try {
