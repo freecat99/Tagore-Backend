@@ -8,8 +8,9 @@ export const getDiscoveryFeed = async (req, res) => {
         const gridResponse = await fetch(`${mainURL}search/articles/*?pageSize=24`);
         const gridData = await gridResponse.json();
         
-        const featuredResponse = await fetch(`${mainURL}search/articles/query:(biotech%20OR%20"artificial%20intelligence")?pageSize=3`);
+        const featuredResponse = await fetch(`${mainURL}search/articles/query:"computer%20science"%20OR%20"artificial%20intelligence"`);
         const featuredData = await featuredResponse.json();
+        console.log("HERE \n",featuredData)
 
         res.status(200).json({
             featured: featuredData.results.map(normalizeDOAJ),
