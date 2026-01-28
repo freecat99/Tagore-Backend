@@ -20,7 +20,7 @@ if(process.env.NODE_ENV==="development"){
     frontendOrigin = "http://localhost:5173"
 
 }else{
-    
+
     frontendOrigin = "https://tagore-frontend.onrender.com"
 }
 
@@ -45,4 +45,5 @@ const PORT = process.env.PORT || 1600;
 app.listen(PORT, ()=>{
     connectDB();
     console.log(`server started @ ${PORT}`)
+    console.log(`cors connected @ ${frontendOrigin}`)
 })
