@@ -13,7 +13,7 @@ dotenv.config();
 
 const app = express();
 
-let frontendOrigin = "https://tagore-frontend.onrender.com"
+let frontendOrigin = "http://localhost:5173"
 
 
 app.use(cors({
