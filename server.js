@@ -8,6 +8,7 @@ import { connectDB } from './Lib/db.js';
 import articleRouter from './Routes/articleRouter.js';
 import paymentRouter from './Routes/paymentRouter.js';
 import projectRouter from './Routes/projectRouter.js'; 
+import llmRouter from './Routes/llmRouter.js';
 
 dotenv.config();
 
@@ -30,6 +31,7 @@ app.use('/api/auth', authRouter);
 app.use('/api/article', articleRouter);
 app.use('/api/payment', paymentRouter);
 app.use('/api/projects', projectRouter);
+app.use('/api/llm', llmRouter);
 
 const PORT = process.env.PORT || 1600;
 

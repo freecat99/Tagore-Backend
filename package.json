@@ -21,6 +21,7 @@
     "joi": "^18.0.2",
     "jsonwebtoken": "^9.0.3",
     "mongoose": "^9.0.1",
+    "openai": "^6.22.0",
     "razorpay": "^2.9.6"
   },
   "devDependencies": {
