@@ -1,5 +1,6 @@
 import OpenAI from 'openai';
 import { config } from 'dotenv';
+
 config();
 
 export const client = new OpenAI({
