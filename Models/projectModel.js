@@ -9,6 +9,117 @@ const tiptapEmptyDocument = {
     ],
 };
 
+const uploadedFileSchema = new mongoose.Schema(
+    {
+        id: {
+            type: String,
+            required: true,
+        },
+        name: {
+            type: String,
+            required: true,
+        },
+        url: {
+            type: String,
+            required: true,
+        },
+        type: {
+            type: String,
+            required: true,
+        },
+        size: {
+            type: Number,
+            default: 0,
+        },
+        mimeType: {
+            type: String,
+            default: '',
+        },
+        resourceType: {
+            type: String,
+            default: 'auto',
+        },
+        folderPath: {
+            type: String,
+            default: '',
+        },
+        createdAt: {
+            type: Date,
+            default: Date.now,
+        },
+    },
+    { _id: false }
+);
+
+const authoredDocSchema = new mongoose.Schema(
+    {
+        id: {
+            type: String,
+            required: true,
+        },
+        name: {
+            type: String,
+            required: true,
+        },
+        type: {
+            type: String,
+            enum: ['text', 'latex', 'docx', 'sheet'],
+            default: 'text',
+        },
+        content: {
+            type: mongoose.Schema.Types.Mixed,
+            default: '',
+        },
+        createdAt: {
+            type: Date,
+            default: Date.now,
+        },
+        updatedAt: {
+            type: Date,
+            default: Date.now,
+        },
+    },
+    { _id: false }
+);
+
+const paperLibrarySchema = new mongoose.Schema(
+    {
+        id: {
+            type: String,
+            required: true,
+        },
+        title: {
+            type: String,
+            default: 'Untitled Paper',
+        },
+        authors: {
+            type: String,
+            default: '',
+        },
+        venue: {
+            type: String,
+            default: '',
+        },
+        year: {
+            type: String,
+            default: '',
+        },
+        abstract: {
+            type: String,
+            default: '',
+        },
+        rawUrl: {
+            type: String,
+            default: '',
+        },
+        pdfUrl: {
+            type: String,
+            default: '',
+        },
+    },
+    { _id: false }
+);
+
 const projectSchema = new mongoose.Schema(
     {
         title: {
@@ -84,6 +195,18 @@ const projectSchema = new mongoose.Schema(
         },
         activePapers: {
             type: [String],
+            default: [],
+        },
+        paperLibrary: {
+            type: [paperLibrarySchema],
+            default: [],
+        },
+        uploadedFiles: {
+            type: [uploadedFileSchema],
+            default: [],
+        },
+        authoredDocs: {
+            type: [authoredDocSchema],
             default: [],
         },
         lastAutoSavedAt: {

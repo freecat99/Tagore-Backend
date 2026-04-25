@@ -1,4 +1,6 @@
 import { diffLines } from "diff";
+import { Readable } from "stream";
+import cloudinary from "../Lib/cloudinary.js";
 import Project from "../Models/projectModel.js";
 import Milestone from "../Models/milestoneModel.js";
 
@@ -60,6 +62,79 @@ const assertProjectOwner = (project, user) => {
     return String(project.author) === String(user._id);
 };
 
+const getUploadFileType = (file) => {
+    const mimeType = file.mimetype || "";
+    const fileName = file.originalname || "";
+    const extension = fileName.split(".").pop()?.toLowerCase();
+
+    if (mimeType.startsWith("image/")) return "image";
+    if (mimeType === "application/pdf" || extension === "pdf") return "pdf";
+    if (
+        mimeType.includes("wordprocessingml") ||
+        mimeType === "application/msword" ||
+        ["doc", "docx"].includes(extension)
+    ) {
+        return "doc";
+    }
+    if (
+        mimeType.includes("spreadsheet") ||
+        mimeType === "text/csv" ||
+        ["csv", "xls", "xlsx"].includes(extension)
+    ) {
+        return "sheet";
+    }
+
+    return "file";
+};
+
+const getRelativePath = (paths, index, fallbackName) => {
+    const rawPath = paths[index] || fallbackName || "";
+    return String(rawPath).replace(/\\/g, "/");
+};
+
+const getFolderPath = (relativePath) => {
+    if (!relativePath.includes("/")) return "";
+    return relativePath.split("/").slice(0, -1).join("/");
+};
+
+const uploadBufferToCloudinary = (file, projectId) =>
+    new Promise((resolve, reject) => {
+        const uploadStream = cloudinary.uploader.upload_stream(
+            {
+                folder: `Tagore/workspaces/${projectId}`,
+                resource_type: "auto",
+                use_filename: true,
+                unique_filename: true,
+            },
+            (error, result) => {
+                if (error) {
+                    reject(error);
+                    return;
+                }
+                resolve(result);
+            }
+        );
+
+        Readable.from(file.buffer).pipe(uploadStream);
+    });
+
+const toWorkspacePayload = (project) => ({
+    projectId: project._id,
+    title: project.title,
+    currentManuscript: project.currentManuscript,
+    activePapers: project.activePapers,
+    papers: project.paperLibrary?.length
+        ? project.paperLibrary
+        : project.activePapers.map((paperId) => ({
+            id: paperId,
+            title: "Untitled Paper",
+            type: "paper",
+        })),
+    uploadedFiles: project.uploadedFiles,
+    authoredDocs: project.authoredDocs,
+    lastAutoSavedAt: project.lastAutoSavedAt,
+});
+
 // 1. Get All Projects (For Discover Page)
 export const getAllProjects = async (req, res) => {
     try {
@@ -103,6 +178,7 @@ export const createProject = async (req, res) => {
             description,
             currentManuscript,
             activePapers,
+            paperLibrary,
         } = req.body;
         const userId = req.user._id; // Comes from protectRoute middleware
         const safeTitle = title?.trim() || `Untitled Research Project ${Date.now()}`;
@@ -127,6 +203,18 @@ export const createProject = async (req, res) => {
             deadline: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // Default 30 days form now
             currentManuscript,
             activePapers: Array.isArray(activePapers) ? activePapers.map(String) : [],
+            paperLibrary: Array.isArray(paperLibrary)
+                ? paperLibrary.map((paper) => ({
+                    id: String(paper.id),
+                    title: paper.title || paper?.bibjson?.title || "Untitled Paper",
+                    authors: paper.authors || paper?.bibjson?.author?.map((a) => a.name).join(", ") || "",
+                    venue: paper.venue || paper?.bibjson?.journal?.title || "",
+                    year: String(paper.year || paper?.bibjson?.year || ""),
+                    abstract: paper.abstract || paper?.bibjson?.abstract || "",
+                    rawUrl: paper.rawUrl || paper?.bibjson?.link?.[0]?.url || "",
+                    pdfUrl: paper.pdfUrl || "",
+                }))
+                : [],
         });
 
         await newProject.save();
@@ -148,7 +236,7 @@ export const createProject = async (req, res) => {
 export const updateProjectDraft = async (req, res) => {
     try {
         const { id } = req.params;
-        const { currentManuscript, manuscriptContent, content, activePapers, title } = req.body;
+        const { currentManuscript, manuscriptContent, content, activePapers, paperLibrary, title } = req.body;
 
         const project = await Project.findById(id);
         if (!project) {
@@ -168,6 +256,19 @@ export const updateProjectDraft = async (req, res) => {
             project.activePapers = activePapers.map(String);
         }
 
+        if (Array.isArray(paperLibrary)) {
+            project.paperLibrary = paperLibrary.map((paper) => ({
+                id: String(paper.id),
+                title: paper.title || "Untitled Paper",
+                authors: paper.authors || "",
+                venue: paper.venue || "",
+                year: String(paper.year || ""),
+                abstract: paper.abstract || "",
+                rawUrl: paper.rawUrl || "",
+                pdfUrl: paper.pdfUrl || "",
+            }));
+        }
+
         if (typeof title === "string" && title.trim()) {
             project.title = title.trim();
         }
@@ -180,11 +281,132 @@ export const updateProjectDraft = async (req, res) => {
             projectId: project._id,
             currentManuscript: project.currentManuscript,
             activePapers: project.activePapers,
+            papers: project.paperLibrary,
             lastAutoSavedAt: project.lastAutoSavedAt,
         });
     } catch (error) {
         console.log("Error in updateProjectDraft:", error);
         res.status(500).json({ message: "Internal Server Error" });
+    }
+};
+
+// 5. Create an authored workspace document
+export const createWorkspaceDoc = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { type = "text", name, content = "" } = req.body;
+        const allowedTypes = ["text", "latex", "docx", "sheet"];
+
+        if (!allowedTypes.includes(type)) {
+            return res.status(400).json({ message: "Unsupported document type" });
+        }
+
+        const project = await Project.findById(id);
+        if (!project) {
+            return res.status(404).json({ message: "Project not found" });
+        }
+
+        if (!assertProjectOwner(project, req.user)) {
+            return res.status(403).json({ message: "You do not have access to update this workspace" });
+        }
+
+        const doc = {
+            id: `doc-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+            name: name || `${type.toUpperCase()} Document ${project.authoredDocs.length + 1}`,
+            type,
+            content,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+        };
+
+        project.authoredDocs.push(doc);
+        await project.save();
+
+        res.status(201).json({
+            doc,
+            workspace: toWorkspacePayload(project),
+        });
+    } catch (error) {
+        console.log("Error in createWorkspaceDoc:", error);
+        res.status(500).json({ message: error.message || "Internal Server Error" });
+    }
+};
+
+// 5. Fetch the workspace explorer inventory
+export const getProjectWorkspace = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const project = await Project.findById(id);
+
+        if (!project) {
+            return res.status(404).json({ message: "Project not found" });
+        }
+
+        if (!assertProjectOwner(project, req.user)) {
+            return res.status(403).json({ message: "You do not have access to this workspace" });
+        }
+
+        res.status(200).json(toWorkspacePayload(project));
+    } catch (error) {
+        console.log("Error in getProjectWorkspace:", error);
+        res.status(500).json({ message: "Internal Server Error" });
+    }
+};
+
+// 6. Upload files into a workspace project
+export const uploadProjectFiles = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const project = await Project.findById(id);
+
+        if (!project) {
+            return res.status(404).json({ message: "Project not found" });
+        }
+
+        if (!assertProjectOwner(project, req.user)) {
+            return res.status(403).json({ message: "You do not have access to update this workspace" });
+        }
+
+        const files = req.files || [];
+        if (!files.length) {
+            return res.status(400).json({ message: "At least one file is required" });
+        }
+
+        const paths = Array.isArray(req.body.paths)
+            ? req.body.paths
+            : req.body.paths
+              ? [req.body.paths]
+              : [];
+
+        const uploadedFiles = await Promise.all(
+            files.map(async (file, index) => {
+                const result = await uploadBufferToCloudinary(file, project._id);
+                const relativePath = getRelativePath(paths, index, file.originalname);
+
+                return {
+                    id: result.public_id,
+                    name: file.originalname,
+                    url: result.secure_url,
+                    type: getUploadFileType(file),
+                    size: file.size,
+                    mimeType: file.mimetype,
+                    resourceType: result.resource_type || "auto",
+                    folderPath: getFolderPath(relativePath),
+                    createdAt: new Date(),
+                };
+            })
+        );
+
+        project.uploadedFiles.push(...uploadedFiles);
+        await project.save();
+
+        res.status(201).json({
+            uploadedFiles,
+            workspace: toWorkspacePayload(project),
+        });
+    } catch (error) {
+        console.log("Error in uploadProjectFiles:", error);
+        res.status(500).json({ message: error.message || "Internal Server Error" });
     }
 };
 
