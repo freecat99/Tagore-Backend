@@ -10,6 +10,7 @@ import paymentRouter from './Routes/paymentRouter.js';
 import projectRouter from './Routes/projectRouter.js'; 
 import llmRouter from './Routes/llmRouter.js';
 import paperRouter from './Routes/paperRouter.js';
+import dashboardRouter from './Routes/dashboardRouter.js';
 
 dotenv.config();
 
@@ -34,6 +35,7 @@ app.use('/api/payment', paymentRouter);
 app.use('/api/projects', projectRouter);
 app.use('/api/llm', llmRouter);
 app.use('/api/paper', paperRouter);
+app.use('/api/dashboard', dashboardRouter);
 
 const PORT = process.env.PORT || 1600;
 
