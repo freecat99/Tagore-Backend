@@ -2,6 +2,8 @@ import express from 'express'
 import dotenv from 'dotenv'
 import cookieParser from 'cookie-parser'
 import cors from 'cors'
+import dns from "node:dns/promises"
+dns.setServers(["1.1.1.1", "8.8.8.8"])
 
 import authRouter from './Routes/authRouter.js';
 import { connectDB } from './Lib/db.js';
@@ -39,8 +41,17 @@ app.use('/api/dashboard', dashboardRouter);
 
 const PORT = process.env.PORT || 1600;
 
-app.listen(PORT, ()=>{
-    connectDB();
-    console.log(`server started @ ${PORT}`)
-    console.log(`cors connected @ ${frontendOrigin}`)
-})
+const startServer = async () => {
+    try {
+        await connectDB();
+        app.listen(PORT, () => {
+            console.log(`server started @ ${PORT}`)
+            console.log(`cors connected @ ${frontendOrigin}`)
+        })
+    } catch (error) {
+        console.log("Server startup failed because MongoDB could not connect:", error.message);
+        process.exit(1);
+    }
+}
+
+startServer();

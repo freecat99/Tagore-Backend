@@ -1,4 +1,4 @@
-import Paper from "../models/paperModel.js"; 
+import Paper from "../Models/paperModel.js"; 
 
 export const newPaper = async (req, res) => {
     try {

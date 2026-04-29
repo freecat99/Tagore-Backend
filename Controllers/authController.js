@@ -1,6 +1,4 @@
-import express from 'express'
-import jwt from 'jsonwebtoken'
-import bcrypt, { compareSync } from 'bcrypt'
+import bcrypt from 'bcrypt'
 import User from '../Models/userModel.js';
 import { tokenGen } from '../Lib/utils.js';
 import cloudinary from '../Lib/cloudinary.js';
@@ -10,29 +8,48 @@ export const register = async(req, res) => {
     const {fullName, email, password, role} = req.body;
 
     try {
-        
-        const oldUser = await User.findOne({email});
+        const safeFullName = fullName?.trim();
+        const safeEmail = email?.trim().toLowerCase();
+        const safeRole = role?.trim() || "Researcher";
+
+        const oldUser = await User.findOne({ email: safeEmail });
         if (oldUser){
             return res.status(403).json({message:"Email already registered!"})
         }
+
+        const oldName = await User.findOne({ fullName: safeFullName });
+        if (oldName) {
+            return res.status(409).json({ message: "This name is already taken. Please use a slightly different display name." });
+        }
+
         const salt = await bcrypt.genSalt(8);
         const hashedPassword = await bcrypt.hash(password, salt);
         
         const newUser = new User({
-            fullName: fullName,
-            email: email,
+            fullName: safeFullName,
+            email: safeEmail,
             password: hashedPassword,
-            role: role
+            role: safeRole
         })
 
         if(newUser){
-            tokenGen(newUser._id, res); //mongodb id is _id
             const savedUser = await newUser.save();
-            res.status(201).json({message:"User registered!", savedUser});
+            tokenGen(savedUser._id, res); //mongodb id is _id
+            const userPayload = savedUser.toObject();
+            delete userPayload.password;
+            res.status(201).json({message:"User registered!", savedUser: userPayload});
         }
 
     } catch (error) {
         console.log(`Error in register controller, ${error}`);
+        if (error?.code === 11000) {
+            const duplicateField = Object.keys(error.keyPattern || {})[0] || "field";
+            return res.status(409).json({
+                message: duplicateField === "fullName"
+                    ? "This name is already taken. Please use a slightly different display name."
+                    : "Email already registered!",
+            });
+        }
         res.status(500).json({message:"Internal server error!"})
     }
 }
@@ -43,19 +60,23 @@ export const login = async(req, res) => {
 
     try {
         
-        const oldUser = await User.findOne({email});
+        const oldUser = await User.findOne({ email }).select("+password");
         if(!oldUser){
             return res.status(401).json({message:"Email not registered!"});
         }
-        const passwordMatched = bcrypt.compare(password, oldUser.password);
+
+        const passwordMatched = await bcrypt.compare(password, oldUser.password);
 
         if(!passwordMatched){
             return res.status(401).json({message:"Wrong password!"});
         }
         
-        tokenGen(oldUser.id, res);
+        tokenGen(oldUser._id, res);
+        const userPayload = oldUser.toObject();
+        delete userPayload.password;
+
         res.status(200).json({message:"Logged in!",
-            oldUser
+            oldUser: userPayload
         })
 
     } catch (error) {

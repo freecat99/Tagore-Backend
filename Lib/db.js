@@ -1,4 +1,6 @@
+import { config } from 'dotenv';
 import mongoose from 'mongoose'
+config()
 
 export const connectDB = async() =>{
     try {
@@ -7,7 +9,7 @@ export const connectDB = async() =>{
         console.log(`mongoDB connected @ ${conn.connection.host}`)
 
     } catch (error) {
-        console.log(`Databse Error: ${error}`)
-        
+        console.log(`Database Error: ${error}`)
+        throw error;
     }
 }
