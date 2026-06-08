@@ -18,12 +18,12 @@ dotenv.config();
 
 const app = express();
 
-let frontendOrigin = "http://localhost:5173"
-
-
 app.use(cors({
-    origin: frontendOrigin, 
-    credentials: true 
+  origin: [
+    "http://localhost:5173",
+    "https://tagorefront.vercel.app"
+  ],
+  credentials: true
 }));
 
 app.use(express.json({ limit: "10mb" }));   
